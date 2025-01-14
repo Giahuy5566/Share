@@ -1,0 +1,62 @@
+        local playerGui = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+        local screenGui = Instance.new("ScreenGui")
+        screenGui.Name = "IntroScreen"
+        screenGui.Parent = playerGui
+
+        local frame = Instance.new("Frame")
+        frame.Name = "IntroFrame"
+        frame.Parent = screenGui
+        frame.Size = UDim2.new(1, 0, 1, 0)
+        frame.BackgroundTransparency = 1
+
+        local imageLabel = Instance.new("ImageLabel")
+        imageLabel.Name = "IntroImage"
+        imageLabel.Parent = frame
+        imageLabel.Size = UDim2.new(0.01, 0, 0.01, 0)  
+        imageLabel.Position = UDim2.new(0.5, -0.1, 0.5, -0.1) 
+        imageLabel.Image = "rbxassetid://106428636831184"
+        imageLabel.BackgroundTransparency = 1
+        imageLabel.ImageTransparency = 100
+        imageLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+
+        local sound = Instance.new("Sound")
+        sound.Name = "IntroSound"
+        sound.Parent = frame
+        sound.SoundId = "rbxassetid://6580172940"
+        sound.Volume = 50
+        sound:Play()
+
+        local tweenService = game:GetService("TweenService")
+
+        local blurEffect = Instance.new("BlurEffect")
+        blurEffect.Parent = game.Lighting
+        blurEffect.Size = 60
+
+        local zoomTweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)  
+        local blurTweenInfo = TweenInfo.new(4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)  
+
+        local fadeIn = tweenService:Create(imageLabel, zoomTweenInfo, {ImageTransparency = 0.5})
+        local fadeOut = tweenService:Create(imageLabel, zoomTweenInfo, {ImageTransparency = 1})
+        local blurTween = tweenService:Create(blurEffect, blurTweenInfo, {Size = 0})  
+        local zoomTween = tweenService:Create(imageLabel, zoomTweenInfo, {Size = UDim2.new(0.35, 0, 0.35, 0)})
+
+        fadeIn:Play()
+        fadeIn.Completed:Wait()
+
+        zoomTween:Play()
+        blurTween:Play()
+
+        wait(3)  
+
+        fadeOut:Play()
+        fadeOut.Completed:Wait()
+
+        blurTween:Play()
+        blurTween.Completed:Wait()
+
+        blurEffect:Destroy()
+        screenGui:Destroy()
+
+    PlayThatBitch()
+task.wait(0.5)
