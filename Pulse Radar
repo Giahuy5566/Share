@@ -1,0 +1,151 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+-- // CẤU HÌNH HỆ THỐNG RADAR BUNG TO MƯỢT MÀ
+local IsRadarEnabled = false -- Biến trạng thái kiểm tra On/Off của nút gạt
+local SCAN_DISTANCE = 25 -- Phạm vi quét kẻ địch (25 mét)
+local MAX_RADAR_SIZE = 12 -- Kích thước bung to tối đa
+local EXPAND_SPEED = 18 -- Tốc độ nở rộng ra
+
+local VisualPart = nil
+local InsideMesh = nil
+local CurrentScale = 1
+local RadarConnection = nil -- Lưu trữ vòng lặp RenderStepped để tắt/bật sạch sẽ
+
+-- // 1. HÀM KHỞI TẠO ĐĨA RADAR PHẲNG
+local function CreatePerfectRadar()
+	if VisualPart then VisualPart:Destroy() end
+	
+	VisualPart = Instance.new("Part")
+	VisualPart.Name = "ZyronX_PerfectRadar"
+	VisualPart.Size = Vector3.new(CurrentScale, 0.05, CurrentScale)
+	VisualPart.Color = Color3.fromRGB(255, 0, 0) -- NỀN MÀU ĐỎ
+	VisualPart.Material = Enum.Material.Neon
+	VisualPart.CanCollide = false
+	VisualPart.Anchored = true
+	VisualPart.CastShadow = false
+	VisualPart.Transparency = 1 -- Mặc định ẩn hoàn toàn
+	
+	InsideMesh = Instance.new("SpecialMesh")
+	InsideMesh.MeshType = Enum.MeshType.FileMesh
+	InsideMesh.MeshId = "rbxassetid://6052216611" -- Mesh đĩa phẳng lì dưới đất
+	InsideMesh.Scale = Vector3.new(1, 1, 0.1)
+	InsideMesh.Parent = VisualPart
+	
+	-- TẠO VIỀN MÀU TRẮNG SẮC NÉT
+	local surfaceGui = Instance.new("SurfaceGui")
+	surfaceGui.Face = Enum.NormalId.Top
+	surfaceGui.Parent = VisualPart
+	
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.new(1, 0, 1, 0)
+	frame.BackgroundTransparency = 1
+	frame.Parent = surfaceGui
+	
+	local uiCorner = Instance.new("UICorner")
+	uiCorner.CornerRadius = UDim.new(1, 0)
+	uiCorner.Parent = frame
+	
+	local uiStroke = Instance.new("UIStroke")
+	uiStroke.Thickness = 4
+	uiStroke.Color = Color3.fromRGB(255, 255, 255) -- VIỀN MÀU TRẮNG
+	uiStroke.Parent = frame
+	
+	VisualPart.Parent = workspace
+end
+
+-- // 2. HÀM QUÉT ĐỊCH (TeamCheck)
+local function isEnemyInScanRange(myPosition)
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer and (player.Team ~= LocalPlayer.Team or player.Team == nil) then
+			if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+				local enemyRoot = player.Character.HumanoidRootPart
+				local enemyHumanoid = player.Character:FindFirstChildOfClass("Humanoid")
+				
+				if enemyHumanoid and enemyHumanoid.Health > 0 then
+					local distance = (enemyRoot.Position - myPosition).Magnitude
+					if distance <= SCAN_DISTANCE then
+						return true
+					end
+				end
+			end
+		end
+	end
+	return false
+end
+
+-- // 3. HÀM XỬ LÝ VÒNG LẶP CHÍNH (Hàm ngầm điều khiển hiệu ứng)
+local function UpdateRadarEffect(dt)
+	if not IsRadarEnabled then return end
+	
+	if not VisualPart or VisualPart.Parent == nil then
+		CreatePerfectRadar()
+		return
+	end
+	
+	local character = LocalPlayer.Character
+	local myRoot = character and character:FindFirstChild("HumanoidRootPart")
+	local myHumanoid = character and character:FindFirstChildOfClass("Humanoid")
+	
+	if myRoot and myHumanoid and myHumanoid.Health > 0 then
+		-- Khóa vị trí mượt mà dưới chân bằng CFrame
+		VisualPart.CFrame = myRoot.CFrame * CFrame.new(0, -3.15, 0)
+		
+		local hasEnemy = isEnemyInScanRange(myRoot.Position)
+		
+		if hasEnemy then
+			-- 🔥 CÓ ĐỊCH: Tăng kích thước bung to liên tục
+			CurrentScale = CurrentScale + (dt * EXPAND_SPEED)
+			if CurrentScale >= MAX_RADAR_SIZE then
+				CurrentScale = 1
+			end
+			
+			VisualPart.Size = Vector3.new(CurrentScale, 0.05, CurrentScale)
+			
+			local transparencyProgress = (CurrentScale / MAX_RADAR_SIZE)
+			VisualPart.Transparency = math.clamp(0.2 + (transparencyProgress * 0.8), 0.2, 1)
+			
+			local stroke = VisualPart:FindFirstChild("SurfaceGui") and VisualPart.SurfaceGui.Frame:FindFirstChild("UIStroke")
+			if stroke then stroke.Enabled = true end
+		else
+			-- 🍃 AN TOÀN: Đứng im thu nhỏ và tàng hình
+			CurrentScale = 1
+			VisualPart.Size = Vector3.new(CurrentScale, 0.05, CurrentScale)
+			VisualPart.Transparency = 1
+			local stroke = VisualPart:FindFirstChild("SurfaceGui") and VisualPart.SurfaceGui.Frame:FindFirstChild("UIStroke")
+			if stroke then stroke.Enabled = false end
+		end
+	else
+		if VisualPart then VisualPart.Transparency = 1 end
+	end
+end
+
+
+-- // 📦 ĐÂY LÀ HAI HÀM CHÍNH ĐỂ RÁP VÀO NÚT BẤM CỦA BẠN
+local function BatRadar()
+	IsRadarEnabled = true
+	CreatePerfectRadar()
+	
+	-- Ngắt vòng lặp cũ nếu có để tránh chạy đè (chống lag)
+	if RadarConnection then RadarConnection:Disconnect() end
+	-- Kích hoạt vòng lặp quét khung hình theo thời gian thực
+	RadarConnection = RunService.RenderStepped:Connect(UpdateRadarEffect)
+end
+
+local function TatRadar()
+	IsRadarEnabled = false
+	
+	-- 1. Ngắt kết nối chạy ngầm lập tức để giải phóng CPU
+	if RadarConnection then
+		RadarConnection:Disconnect()
+		RadarConnection = nil
+	end
+	
+	-- 2. Xóa sạch cái đĩa radar khỏi thế giới game (Phần xử lý ELSE triệt để)
+	if VisualPart then
+		VisualPart:Destroy()
+		VisualPart = nil
+	end
+	CurrentScale = 1
+end
