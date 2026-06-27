@@ -1,0 +1,110 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local Camera = workspace.CurrentCamera
+
+-- // CẤU HÌNH HỆ THỐNG
+local IsAimbotEnabled = false -- Trạng thái On/Off (Mặc định là Tắt)
+local FOV_RADIUS = 75 -- Bán kính vòng tròn tâm ngắm
+local AIM_SMOOTHNESS = 0.18 -- Tốc độ bám mục tiêu (mượt mà)
+
+-- // 1. KHỞI TẠO UI VÒNG TRÒN FOV GIỮA MÀN HÌNH
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "CustomFOV_Core"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = PlayerGui
+
+local FOVCircle = Instance.new("Frame")
+FOVCircle.Size = UDim2.new(0, FOV_RADIUS * 2, 0, FOV_RADIUS * 2) 
+FOVCircle.Position = UDim2.new(0.5, -FOV_RADIUS, 0.5, -FOV_RADIUS)
+FOVCircle.BackgroundTransparency = 1
+FOVCircle.Visible = false -- Mặc định ẩn vòng tròn khi chưa bật
+FOVCircle.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(1, 0)
+UICorner.Parent = FOVCircle
+
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Thickness = 2
+UIStroke.Color = Color3.fromRGB(0, 255, 128) -- Màu xanh Neon nổi bật
+UIStroke.Parent = FOVCircle
+
+-- // 2. HÀM KIỂM TRA TẦM NHÌN RAYCAST (VẬT CẢN)
+local function isVisible(targetPart)
+	local origin = Camera.CFrame.Position
+	local direction = targetPart.Position - origin
+	
+	local raycastParams = RaycastParams.new()
+	raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
+	raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+
+	local raycastResult = workspace:Raycast(origin, direction, raycastParams)
+
+	if raycastResult and raycastResult.Instance:IsDescendantOf(targetPart.Parent) then
+		return true
+	end
+	return false
+end
+
+-- // 3. HÀM TÌM ĐỐI THỦ TRONG PHẠM VI FOV
+local function getClosestTarget()
+	if not IsAimbotEnabled then return nil end
+
+	local closestTarget = nil
+	local shortestDistance = FOV_RADIUS
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+			local character = player.Character
+			local humanoid = character:FindFirstChildOfClass("Humanoid")
+			local head = character:FindFirstChild("Head")
+
+			-- Kiểm tra đối thủ còn sống
+			if humanoid and humanoid.Health > 0 and head then
+				local screenPosition, onScreen = Camera:WorldToViewportPoint(head.Position)
+
+				if onScreen then
+					local mousePosition = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+					local targetPos2D = Vector2.new(screenPosition.X, screenPosition.Y)
+					local distance = (targetPos2D - mousePosition).Magnitude
+
+					if distance < shortestDistance then
+						if isVisible(head) then
+							shortestDistance = distance
+							closestTarget = head
+						end
+					end
+				end
+			end
+		end
+	end
+	return closestTarget
+end
+
+-- // 4. VÒNG LẶP ĐIỀU KHIỂN CAMERA LIÊN TỤC
+RunService.RenderStepped:Connect(function()
+	if IsAimbotEnabled then
+		local targetHead = getClosestTarget()
+		
+		if targetHead then
+			-- Nếu có mục tiêu hợp lệ: Khóa camera vào đầu đối thủ
+			local targetCFrame = CFrame.new(Camera.CFrame.Position, targetHead.Position)
+			Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, AIM_SMOOTHNESS) 
+		else
+			-- Đối thủ chết hoặc nấp sau tường: Trả chuột tự do cho người chơi
+		end
+	end
+end)
+
+-- // 5. HAI HÀM CHÍNH ĐỂ BẠN GẮN VÀO TOGGLE CỦA BẠN
+local function BatAimbot()
+    IsAimbotEnabled = true
+    FOVCircle.Visible = true -- Hiện vòng tròn tâm ngắm
+end
+
+local function TatAimbot()
+    IsAimbotEnabled = false
+    FOVCircle.Visible = false -- Ẩn vòng tròn, trả camera tự do hoàn toàn
+end
