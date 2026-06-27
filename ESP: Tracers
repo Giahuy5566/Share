@@ -1,0 +1,95 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+-- // 1. TẠO TẦNG ĐỒ HỌA 2D BẤT TỬ
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ZyronX_Snaplines_Stable"
+ScreenGui.DisplayOrder = 999998
+ScreenGui.ResetOnSpawn = false
+
+local success, _ = pcall(function() ScreenGui.Parent = game:GetService("CoreGui") end)
+if not success then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+
+local ActiveLines = {}
+
+-- // 2. HÀM CẬP NHẬT TIA XOAY 2D (TỐI ƯU MƯỢT MÀ)
+local function UpdateLineBetweenPoints(lineFrame, start2D, end2D)
+	local distance = math.sqrt((end2D.X - start2D.X)^2 + (end2D.Y - start2D.Y)^2)
+	local angle = math.atan2(end2D.Y - start2D.Y, end2D.X - start2D.X)
+	
+	lineFrame.Size = UDim2.new(0, distance, 0, 1.5) -- Độ dày tia trắng tinh tế
+	lineFrame.Position = UDim2.new(0, (start2D.X + end2D.X) / 2, 0, (start2D.Y + end2D.Y) / 2)
+	lineFrame.Rotation = math.deg(angle)
+	lineFrame.Visible = true
+end
+
+-- // 3. VÒNG LẶP QUÉT ĐỊNH VỊ SIÊU ỔN ĐỊNH
+RunService.RenderStepped:Connect(function()
+	local myChar = LocalPlayer.Character
+	local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+	
+	local startPos2D = nil
+	
+	if myRoot then
+		-- Lấy tọa độ gót chân của bạn bằng hàm WorldToScreenPoint chống lệch
+		local myFootPos3D = myRoot.Position - Vector3.new(0, 3, 0)
+		local myFootPos2D, myOnScreen = Camera:WorldToScreenPoint(myFootPos3D)
+		
+		-- Cơ chế chống mất tia khi zoom sát người
+		if not myOnScreen or (Camera.CFrame.Position - myRoot.Position).Magnitude < 4 then
+			startPos2D = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+		else
+			startPos2D = Vector2.new(myFootPos2D.X, myFootPos2D.Y)
+		end
+	else
+		-- Nếu bạn chết, ẩn sạch tia ngay lập tức
+		for _, line in pairs(ActiveLines) do line.Visible = false end
+		return
+	end
+
+	-- Quét đối thủ trong server
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer then
+			local enemyChar = player.Character
+			local enemyRoot = enemyChar and enemyChar:FindFirstChild("HumanoidRootPart")
+			local enemyHumanoid = enemyChar and enemyChar:FindFirstChildOfClass("Humanoid")
+			
+			-- Kiểm tra điều kiện sống sót và Team
+			if enemyRoot and enemyHumanoid and enemyHumanoid.Health > 0 and (player.Team ~= LocalPlayer.Team or player.Team == nil) then
+				-- 🎯 GẮN SÁT ĐỊCH HƠN: Khóa thẳng vào trọng tâm cơ thể (HumanoidRootPart) thay vì dưới chân xa lắc
+				local enemyPos2D, enemyOnScreen = Camera:WorldToScreenPoint(enemyRoot.Position)
+				
+				if enemyOnScreen then
+					local lineFrame = ActiveLines[player.Name]
+					
+					if not lineFrame then
+						lineFrame = Instance.new("Frame")
+						lineFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+						lineFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255) -- Màu trắng tinh
+						lineFrame.BorderSizePixel = 0
+						lineFrame.BackgroundTransparency = 0.25 -- Hiện rõ ràng sắc nét
+						lineFrame.Parent = ScreenGui
+						ActiveLines[player.Name] = lineFrame
+					end
+					
+					-- Nối thẳng từ gốc chân/màn hình của bạn -> Giữa người địch ổn định 100%
+					UpdateLineBetweenPoints(lineFrame, startPos2D, Vector2.new(enemyPos2D.X, enemyPos2D.Y))
+				else
+					if ActiveLines[player.Name] then ActiveLines[player.Name].Visible = false end
+				end
+			else
+				if ActiveLines[player.Name] then ActiveLines[player.Name].Visible = false end
+			end
+		end
+	end
+	
+	-- Xóa tia khi có người out game
+	for name, line in pairs(ActiveLines) do
+		if not Players:FindFirstChild(name) then
+			line:Destroy()
+			ActiveLines[name] = nil
+		end
+	end
+end)
