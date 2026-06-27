@@ -1,0 +1,123 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local Camera = workspace.CurrentCamera
+
+-- // CẤU HÌNH HỆ THỐNG NÂNG CẤP
+local IsAimbotEnabled = false -- Trạng thái kiểm tra On/Off
+local FOV_RADIUS = 120 -- Bán kính vòng tròn mặc định ban đầu
+local AIM_SMOOTHNESS = 0.65 -- Tốc độ khóa camera mạnh mẽ
+
+-- Cấu hình màu sắc
+local COLOR_NORMAL = Color3.fromRGB(255, 255, 255) -- Màu Trắng khi quét mục tiêu
+local COLOR_LOCKED = Color3.fromRGB(255, 0, 0) -- Màu Đỏ khi khóa (Aim) trúng đối thủ
+
+-- // 1. KHỞI TẠO UI VÒNG TRÒN FOV GIỮA MÀN HÌNH
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "CustomFOV_Core"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = PlayerGui
+
+local FOVCircle = Instance.new("Frame")
+FOVCircle.Size = UDim2.new(0, FOV_RADIUS * 2, 0, FOV_RADIUS * 2) 
+FOVCircle.Position = UDim2.new(0.5, -FOV_RADIUS, 0.5, -FOV_RADIUS)
+FOVCircle.BackgroundTransparency = 1
+FOVCircle.Visible = false -- Mặc định ẩn, sẽ do Toggle điều khiển hiện/ẩn
+FOVCircle.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(1, 0)
+UICorner.Parent = FOVCircle
+
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Thickness = 1 -- Nét mỏng tinh tế
+UIStroke.Color = COLOR_NORMAL
+UIStroke.Parent = FOVCircle
+
+-- // HÀM CẬP NHẬT KÍCH THƯỚC VÒNG TRÒN KHI KÉO SLIDER
+local function CapNhatKichThuocFOV(newRadius)
+	FOV_RADIUS = newRadius
+	-- Cập nhật lại Size và Position của UI vòng tròn theo bán kính mới ngay lập tức
+	FOVCircle.Size = UDim2.new(0, FOV_RADIUS * 2, 0, FOV_RADIUS * 2)
+	FOVCircle.Position = UDim2.new(0.5, -FOV_RADIUS, 0.5, -FOV_RADIUS)
+end
+
+-- // 2. HÀM KIỂM TRA TẦM NHÌN RAYCAST (VẬT CẢN BỨC TƯỜNG)
+local function isVisible(targetPart)
+	local origin = Camera.CFrame.Position
+	local direction = targetPart.Position - origin
+	
+	local raycastParams = RaycastParams.new()
+	raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
+	raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+
+	local raycastResult = workspace:Raycast(origin, direction, raycastParams)
+
+	if raycastResult and raycastResult.Instance:IsDescendantOf(targetPart.Parent) then
+		return true
+	end
+	return false
+end
+
+-- // 3. HÀM TÌM ĐỐI THỦ TRONG PHẠM VI FOV TO
+local function getClosestTarget()
+	if not IsAimbotEnabled then return nil end
+
+	local closestTarget = nil
+	local shortestDistance = FOV_RADIUS
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+			local character = player.Character
+			local humanoid = character:FindFirstChildOfClass("Humanoid")
+			local head = character:FindFirstChild("Head")
+
+			-- Kiểm tra đối thủ còn sống
+			if humanoid and humanoid.Health > 0 and head then
+				local screenPosition, onScreen = Camera:WorldToViewportPoint(head.Position)
+
+				if onScreen then
+					local mousePosition = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+					local targetPos2D = Vector2.new(screenPosition.X, screenPosition.Y)
+					local distance = (targetPos2D - mousePosition).Magnitude
+
+					if distance < shortestDistance then
+						if isVisible(head) then
+							shortestDistance = distance
+							closestTarget = head
+						end
+					end
+				end
+			end
+		end
+	end
+	return closestTarget
+end
+
+-- // 4. VÒNG LẶP ĐIỀU KHIỂN CAMERA MẠNH MẼ LIÊN TỤC
+RunService.RenderStepped:Connect(function()
+	if IsAimbotEnabled then
+		local targetHead = getClosestTarget()
+		
+		if targetHead then
+			UIStroke.Color = COLOR_LOCKED
+			local targetCFrame = CFrame.new(Camera.CFrame.Position, targetHead.Position)
+			Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, AIM_SMOOTHNESS) 
+		else
+			UIStroke.Color = COLOR_NORMAL
+		end
+	end
+end)
+
+-- // 5. CÁC HÀM LIÊN KẾT ĐỂ RÁP VÀO SỰ KIỆN MENU CỦA BẠN
+local function BatAimbot()
+	IsAimbotEnabled = true
+	UIStroke.Color = COLOR_NORMAL
+	FOVCircle.Visible = true
+end
+
+local function TatAimbot()
+	IsAimbotEnabled = false
+	FOVCircle.Visible = false
+end
