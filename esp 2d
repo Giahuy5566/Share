@@ -1,0 +1,123 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- // CẤU HÌNH HỆ THỐNG
+local IsBoxEnabled = false -- Biến trạng thái kiểm tra On/Off
+local COLOR_ENEMY = Color3.fromRGB(255, 255, 255)  -- Đối thủ: Khung màu Trắng
+local COLOR_ALLY = Color3.fromRGB(0, 150, 255)    -- Đồng đội: Khung màu Xanh Dương
+local BOX_THICKNESS = 1.5 -- Nét vẽ mỏng tinh tế
+
+-- Danh sách lưu trữ các kết nối để dọn dẹp triệt để khi tắt
+local PlayerConnections = {}
+
+-- // HÀM TẠO BOX 2D XUYÊN TƯỜNG (Giữ nguyên logic hoạt động 100% của bạn)
+local function Create2DBoxXuyenTuong(player)
+	if player == LocalPlayer then return end
+
+	local function onCharacterAdded(character)
+		local rootPart = character:WaitForChild("HumanoidRootPart", 5)
+		local humanoid = character:WaitForChild("Humanoid", 5)
+		if not rootPart or not humanoid then return end
+
+		-- Xóa khung cũ nếu có
+		if rootPart:FindFirstChild("ZyronX_2DBox") then
+			rootPart.ZyronX_2DBox:Destroy()
+		end
+		
+		-- Nếu hệ thống đang bị TẮT thì không tạo thêm khung mới nữa
+		if not IsBoxEnabled then return end
+
+		local billboard = Instance.new("BillboardGui")
+		billboard.Name = "ZyronX_2DBox"
+		billboard.AlwaysOnTop = true 
+		billboard.Size = UDim2.new(4.5, 0, 6, 0)
+		billboard.ExtentsOffset = Vector3.new(0, 0, 0)
+
+		local boxColor = COLOR_ENEMY
+		if player.Team == LocalPlayer.Team and player.Team ~= nil then
+			boxColor = COLOR_ALLY
+		end
+
+		-- Tạo 4 cạnh khung
+		local top = Instance.new("Frame")
+		top.Size = UDim2.new(1, 0, 0, BOX_THICKNESS)
+		top.BackgroundColor3 = boxColor
+		top.BorderSizePixel = 0
+		top.Parent = billboard
+
+		local bottom = Instance.new("Frame")
+		bottom.Size = UDim2.new(1, 0, 0, BOX_THICKNESS)
+		bottom.Position = UDim2.new(0, 0, 1, -BOX_THICKNESS)
+		bottom.BackgroundColor3 = boxColor
+		bottom.BorderSizePixel = 0
+		bottom.Parent = billboard
+
+		local left = Instance.new("Frame")
+		left.Size = UDim2.new(0, BOX_THICKNESS, 1, 0)
+		left.BackgroundColor3 = boxColor
+		left.BorderSizePixel = 0
+		left.Parent = billboard
+
+		local right = Instance.new("Frame")
+		right.Size = UDim2.new(0, BOX_THICKNESS, 1, 0)
+		right.Position = UDim2.new(1, -BOX_THICKNESS, 0, 0)
+		right.BackgroundColor3 = boxColor
+		right.BorderSizePixel = 0
+		right.Parent = billboard
+
+		billboard.Parent = rootPart
+
+		local connection
+		connection = humanoid.Died:Connect(function()
+			if billboard then billboard:Destroy() end
+			connection:Disconnect()
+		end)
+	end
+
+	if player.Character then
+		onCharacterAdded(player.Character)
+	end
+	
+	-- Lưu lại kết nối hồi sinh của người chơi này
+	local charConn = player.CharacterAdded:Connect(onCharacterAdded)
+	table.insert(PlayerConnections, charConn)
+end
+
+-- // HÀM XÓA SẠCH KHUNG TRÊN TOÀN SERVER (Dùng khi Tắt)
+local function XoaSachHop2D()
+	-- 1. Xóa tất cả các khung đang bám trên nhân vật trong game
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+			local targetBox = player.Character.HumanoidRootPart:FindFirstChild("ZyronX_2DBox")
+			if targetBox then
+				targetBox:Destroy()
+			end
+		end
+	end
+	
+	-- 2. Ngắt các kết nối lắng nghe để tránh rò rỉ bộ nhớ gây lag
+	for _, conn in ipairs(PlayerConnections) do
+		if conn then conn:Disconnect() end
+	end
+	PlayerConnections = {}
+end
+
+
+-- // 📦 ĐÂY LÀ HAI HÀM ĐỂ BẠN GẮN VÀO NÚT TOGGLE
+local function BatBox2D()
+	IsBoxEnabled = true
+	
+	-- Quét và tạo khung cho mọi người hiện tại
+	for _, player in ipairs(Players:GetPlayers()) do
+		Create2DBoxXuyenTuong(player)
+	end
+	
+	-- Lắng nghe nếu có người chơi mới vào phòng
+	local pAddedConn = Players.PlayerAdded:Connect(Create2DBoxXuyenTuong)
+	table.insert(PlayerConnections, pAddedConn)
+end
+
+local function TatBox2D()
+	IsBoxEnabled = false
+	XoaSachHop2D() -- Gọi hàm xóa sạch tận gốc khi chuyển trạng thái sang OFF
+end
