@@ -1,0 +1,77 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+-- // CẤU HÌNH HIỆU ỨNG
+local IsEffectEnabled = false -- Trạng thái On/Off của hiệu ứng
+local CIRCLE_SIZE = 8 -- Độ rộng của vòng tròn dưới chân
+local EFFECT_COLOR = Color3.fromRGB(0, 130, 255) -- Màu xanh dương
+
+local VisualPart = nil
+local RenderConnection = nil
+
+-- // HÀM TẠO VÒNG TRÒN DƯỚI CHÂN
+local function CreateFootCircle()
+	if VisualPart then VisualPart:Destroy() end
+	
+	-- Tạo một Part hình trụ mỏng để làm vòng tròn dưới đất
+	VisualPart = Instance.new("Part")
+	VisualPart.Name = "ZyronX_FootEffect"
+	VisualPart.Shape = Enum.PartType.Cylinder
+	VisualPart.Size = Vector3.new(0.1, CIRCLE_SIZE, CIRCLE_SIZE) -- Cực kỳ mỏng
+	VisualPart.Color = EFFECT_COLOR
+	VisualPart.Material = Enum.Material.Neon -- Chất liệu phát sáng Neon cho đẹp
+	VisualPart.CanCollide = false
+	VisualPart.Anchored = true
+	VisualPart.CastShadow = false
+	VisualPart.Parent = workspace
+	
+	-- Xoay Part nằm ngang song song với mặt đất
+	VisualPart.Orientation = Vector3.new(0, 0, 90)
+end
+
+-- // HAI HÀM CHÍNH ĐỂ BẠN GẮN VÀO TOGGLE CỦA BẠN
+
+local function BatHieuUng()
+	IsEffectEnabled = true
+	CreateFootCircle()
+	
+	local transparencyTime = 0
+	
+	-- Vòng lặp RenderStepped để cập nhật vị trí theo chân nhân vật và tạo hiệu ứng mờ dần
+	RenderConnection = RunService.RenderStepped:Connect(function(dt)
+		if not IsEffectEnabled or not VisualPart then return end
+		
+		local character = LocalPlayer.Character
+		local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		
+		-- Kiểm tra nếu nhân vật còn sống
+		if rootPart and humanoid and humanoid.Health > 0 then
+			VisualPart.Transparency = 0.4 -- Giữ độ trong suốt cố định vừa phải để không bị chói
+			
+			-- Di chuyển vòng tròn đi theo vị trí dưới chân nhân vật (Hạ thấp xuống mặt đất một chút)
+			local footPosition = rootPart.Position - Vector3.new(0, rootPart.Size.Y + 0.8, 0)
+			VisualPart.Position = footPosition
+		else
+			-- Nếu chết thì tạm ẩn vòng tròn
+			VisualPart.Transparency = 1
+		end
+	end)
+end
+
+local function TatHieuUng()
+	IsEffectEnabled = false
+	
+	-- Ngắt kết nối vòng lặp để tiết kiệm tài nguyên (Tránh lag game)
+	if RenderConnection then
+		RenderConnection:Disconnect()
+		RenderConnection = nil
+	end
+	
+	-- Xóa vòng tròn khỏi thế giới game
+	if VisualPart then
+		VisualPart:Destroy()
+		VisualPart = nil
+	end
+end
