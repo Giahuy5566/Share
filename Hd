@@ -1,1 +1,234 @@
-https://pastefy.app/TkJZX1Pl?hash=j6z7FGk9PrpJi0IjexW4GVxs793kgFWCEkHe8zxtZcfDjpsw3do9IeCJC9G1fqGy
+-- fov_visualizer.lua
+-- Place in StarterPlayerScripts
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Config
+local config = {
+	radius = 120,
+	color = Color3.fromRGB(0, 255, 136),
+	fillTransparency = 0.75,
+	borderThickness = 2,
+	visible = true,
+	toggleKey = Enum.KeyCode.F4,
+}
+
+-- Build ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "FOVVisualizer"
+screenGui.ResetOnSpawn = false
+screenGui.IgnoreGuiInset = true
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = playerGui
+
+-- Canvas frame (full screen, invisible container)
+local canvas = Instance.new("Frame")
+canvas.Name = "Canvas"
+canvas.Size = UDim2.fromScale(1, 1)
+canvas.Position = UDim2.fromScale(0, 0)
+canvas.BackgroundTransparency = 1
+canvas.Parent = screenGui
+
+-- FOV circle (outer ring)
+local fovRing = Instance.new("Frame")
+fovRing.Name = "FOVRing"
+fovRing.AnchorPoint = Vector2.new(0.5, 0.5)
+fovRing.BackgroundTransparency = 1
+fovRing.BorderSizePixel = 0
+fovRing.Parent = canvas
+
+local ringCorner = Instance.new("UICorner")
+ringCorner.CornerRadius = UDim.new(1, 0)
+ringCorner.Parent = fovRing
+
+local ringStroke = Instance.new("UIStroke")
+ringStroke.Color = config.color
+ringStroke.Thickness = config.borderThickness
+ringStroke.Transparency = 0
+ringStroke.Parent = fovRing
+
+-- FOV fill (semi-transparent interior)
+local fovFill = Instance.new("Frame")
+fovFill.Name = "FOVFill"
+fovFill.AnchorPoint = Vector2.new(0.5, 0.5)
+fovFill.BackgroundColor3 = config.color
+fovFill.BackgroundTransparency = config.fillTransparency
+fovFill.BorderSizePixel = 0
+fovFill.Parent = canvas
+
+local fillCorner = Instance.new("UICorner")
+fillCorner.CornerRadius = UDim.new(1, 0)
+fillCorner.Parent = fovFill
+
+-- Crosshair (horizontal)
+local crossH = Instance.new("Frame")
+crossH.Name = "CrossH"
+crossH.AnchorPoint = Vector2.new(0.5, 0.5)
+crossH.Size = UDim2.new(0, 12, 0, 1)
+crossH.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+crossH.BackgroundTransparency = 0.3
+crossH.BorderSizePixel = 0
+crossH.Parent = canvas
+
+-- Crosshair (vertical)
+local crossV = Instance.new("Frame")
+crossV.Name = "CrossV"
+crossV.AnchorPoint = Vector2.new(0.5, 0.5)
+crossV.Size = UDim2.new(0, 1, 0, 12)
+crossV.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+crossV.BackgroundTransparency = 0.3
+crossV.BorderSizePixel = 0
+crossV.Parent = canvas
+
+-- Settings panel
+local panel = Instance.new("Frame")
+panel.Name = "SettingsPanel"
+panel.AnchorPoint = Vector2.new(1, 0)
+panel.Position = UDim2.new(1, -12, 0, 12)
+panel.Size = UDim2.new(0, 200, 0, 140)
+panel.BackgroundColor3 = Color3.fromRGB(13, 13, 13)
+panel.BackgroundTransparency = 0.15
+panel.BorderSizePixel = 0
+panel.Parent = canvas
+
+local panelCorner = Instance.new("UICorner")
+panelCorner.CornerRadius = UDim.new(0, 6)
+panelCorner.Parent = panel
+
+local panelLayout = Instance.new("UIListLayout")
+panelLayout.Padding = UDim.new(0, 6)
+panelLayout.FillDirection = Enum.FillDirection.Vertical
+panelLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+panelLayout.Parent = panel
+
+local panelPadding = Instance.new("UIPadding")
+panelPadding.PaddingTop = UDim.new(0, 10)
+panelPadding.PaddingLeft = UDim.new(0, 10)
+panelPadding.PaddingRight = UDim.new(0, 10)
+panelPadding.Parent = panel
+
+-- Helper: create a labeled slider row
+local function makeSlider(labelText, minVal, maxVal, defaultVal, callback)
+	local row = Instance.new("Frame")
+	row.Size = UDim2.new(1, 0, 0, 28)
+	row.BackgroundTransparency = 1
+	row.Parent = panel
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(0.55, 0, 1, 0)
+	label.Position = UDim2.new(0, 0, 0, 0)
+	label.BackgroundTransparency = 1
+	label.TextColor3 = Color3.fromRGB(140, 140, 140)
+	label.TextSize = 11
+	label.Font = Enum.Font.Code
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Text = labelText
+	label.Parent = row
+
+	local valLabel = Instance.new("TextLabel")
+	valLabel.Size = UDim2.new(0.2, 0, 1, 0)
+	valLabel.Position = UDim2.new(0.55, 0, 0, 0)
+	valLabel.BackgroundTransparency = 1
+	valLabel.TextColor3 = Color3.fromRGB(0, 255, 136)
+	valLabel.TextSize = 11
+	valLabel.Font = Enum.Font.Code
+	valLabel.Text = tostring(defaultVal)
+	valLabel.Parent = row
+
+	local sliderBg = Instance.new("Frame")
+	sliderBg.Size = UDim2.new(1, 0, 0, 4)
+	sliderBg.AnchorPoint = Vector2.new(0, 0.5)
+	sliderBg.Position = UDim2.new(0, 0, 1, 2)
+	sliderBg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+	sliderBg.BorderSizePixel = 0
+	sliderBg.Parent = row
+
+	local sliderBgCorner = Instance.new("UICorner")
+	sliderBgCorner.CornerRadius = UDim.new(1, 0)
+	sliderBgCorner.Parent = sliderBg
+
+	local sliderFill = Instance.new("Frame")
+	sliderFill.Size = UDim2.new((defaultVal - minVal) / (maxVal - minVal), 0, 1, 0)
+	sliderFill.BackgroundColor3 = Color3.fromRGB(0, 255, 136)
+	sliderFill.BorderSizePixel = 0
+	sliderFill.Parent = sliderBg
+
+	local sliderFillCorner = Instance.new("UICorner")
+	sliderFillCorner.CornerRadius = UDim.new(1, 0)
+	sliderFillCorner.Parent = sliderFill
+
+	local isDragging = false
+
+	sliderBg.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			isDragging = true
+		end
+	end)
+
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			isDragging = false
+		end
+	end)
+
+	RunService.RenderStepped:Connect(function()
+		if not isDragging then return end
+		local mousePos = UserInputService:GetMouseLocation()
+		local bgPos = sliderBg.AbsolutePosition
+		local bgSize = sliderBg.AbsoluteSize
+		local ratio = math.clamp((mousePos.X - bgPos.X) / bgSize.X, 0, 1)
+		local value = math.floor(minVal + ratio * (maxVal - minVal))
+		sliderFill.Size = UDim2.new(ratio, 0, 1, 0)
+		valLabel.Text = tostring(value)
+		callback(value)
+	end)
+
+	return row
+end
+
+-- Wire sliders
+makeSlider("FOV Radius", 20, 250, config.radius, function(v)
+	config.radius = v
+end)
+
+makeSlider("Fill Alpha", 0, 95, 75, function(v)
+	config.fillTransparency = v / 100
+end)
+
+makeSlider("Ring Width", 1, 6, config.borderThickness, function(v)
+	config.borderThickness = v
+	ringStroke.Thickness = v
+end)
+
+-- Toggle visibility
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then return end
+	if input.KeyCode == config.toggleKey then
+		config.visible = not config.visible
+		fovRing.Visible = config.visible
+		fovFill.Visible = config.visible
+	end
+end)
+
+-- Update loop — centers circle on screen, applies radius
+RunService.RenderStepped:Connect(function()
+	local viewportSize = workspace.CurrentCamera.ViewportSize
+	local cx = viewportSize.X / 2
+	local cy = viewportSize.Y / 2
+	local diameter = config.radius * 2
+
+	fovRing.Position = UDim2.new(0, cx, 0, cy)
+	fovRing.Size = UDim2.new(0, diameter, 0, diameter)
+
+	fovFill.Position = UDim2.new(0, cx, 0, cy)
+	fovFill.Size = UDim2.new(0, diameter, 0, diameter)
+	fovFill.BackgroundTransparency = config.fillTransparency
+
+	crossH.Position = UDim2.new(0, cx, 0, cy)
+	crossV.Position = UDim2.new(0, cx, 0, cy)
+end)
