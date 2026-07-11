@@ -1,7 +1,5 @@
 -- ================================================================
--- CS:GO MENU UI LIBRARY - BẢN RIÊNG CHO ROBLOX
--- Tác giả: [Bạn]
--- Github: https://github.com/yourusername/CSGOMenu
+-- CS:GO MENU UI LIBRARY - BẢN SỬA LỖI
 -- ================================================================
 
 local CSGOMenu = {}
@@ -166,7 +164,6 @@ local function CreateUI(settings)
         btn.Font = THEME.Font
         btn.Parent = tabScroll
 
-        -- Cập nhật canvas size
         tabScroll.CanvasSize = UDim2.new(0, #self.Tabs * 85, 0, 0)
 
         -- Frame nội dung tab
@@ -198,7 +195,7 @@ local function CreateUI(settings)
         leftLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
         leftLayout.Parent = leftColumn
 
-        -- Cột phải (tương tự)
+        -- Cột phải
         local rightColumn = leftColumn:Clone()
         rightColumn.Parent = tabFrame
         local rightLayout = rightColumn:FindFirstChildOfClass("UIListLayout")
@@ -209,7 +206,6 @@ local function CreateUI(settings)
             rightLayout.Parent = rightColumn
         end
 
-        -- Lưu trữ
         tab.LeftColumn = leftColumn
         tab.RightColumn = rightColumn
         tab.LeftLayout = leftLayout
@@ -259,9 +255,8 @@ local function CreateUI(settings)
             contentLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
             contentLayout.Parent = content
 
-            -- Cập nhật chiều cao groupbox
             local function updateHeight()
-                local totalHeight = 25 -- title bar
+                local totalHeight = 25
                 for _, child in ipairs(content:GetChildren()) do
                     if child:IsA("Frame") or child:IsA("TextLabel") or child:IsA("TextButton") then
                         totalHeight = totalHeight + child.Size.Y.Offset + 5
@@ -270,9 +265,7 @@ local function CreateUI(settings)
                 frame.Size = UDim2.new(0.95, 0, 0, totalHeight + 10)
             end
 
-            -- Hàm thêm thành phần
             function group:AddToggle(text, default, callback)
-                local toggle = {}
                 local frame = Instance.new("Frame")
                 frame.Size = UDim2.new(1, -10, 0, 30)
                 frame.BackgroundTransparency = 1
@@ -308,7 +301,7 @@ local function CreateUI(settings)
                 end)
 
                 updateHeight()
-                return toggle
+                return {}
             end
 
             function group:AddSlider(text, min, max, default, increment, valueName, callback)
@@ -480,14 +473,13 @@ local function CreateUI(settings)
                 colorBtn.Position = UDim2.new(0.8, 0, 0, 0)
                 colorBtn.BackgroundColor3 = default or Color3.fromRGB(255, 0, 0)
                 colorBtn.BorderSizePixel = 0
-                colorBtn.Text = "🎨"
+                colorBtn.Text = ""
                 colorBtn.TextScaled = true
                 colorBtn.Font = THEME.Font
                 colorBtn.Parent = frame
 
                 local color = default or Color3.fromRGB(255, 0, 0)
                 colorBtn.MouseButton1Click:Connect(function()
-                    -- Mở color picker đơn giản (dùng hộp thoại nhập)
                     local colorPicker = Instance.new("Frame")
                     colorPicker.Size = UDim2.new(0, 200, 0, 200)
                     colorPicker.Position = UDim2.new(0.5, -100, 0.5, -100)
@@ -495,24 +487,16 @@ local function CreateUI(settings)
                     colorPicker.BorderSizePixel = 0
                     colorPicker.Parent = self.ScreenGui
 
-                    local hueSlider = Instance.new("Frame")
-                    hueSlider.Size = UDim2.new(1, -20, 0, 20)
-                    hueSlider.Position = UDim2.new(0, 10, 0, 10)
-                    hueSlider.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-                    hueSlider.BorderSizePixel = 0
-                    hueSlider.Parent = colorPicker
-
-                    -- Đơn giản: chỉ chọn màu từ presets
                     local presets = {
                         Color3.fromRGB(255,0,0), Color3.fromRGB(0,255,0), Color3.fromRGB(0,0,255),
                         Color3.fromRGB(255,255,0), Color3.fromRGB(255,0,255), Color3.fromRGB(0,255,255),
                         Color3.fromRGB(255,255,255), Color3.fromRGB(128,128,128), Color3.fromRGB(0,0,0),
                     }
                     local y = 40
-                    for _, c in ipairs(presets) do
+                    for i, c in ipairs(presets) do
                         local btn = Instance.new("TextButton")
                         btn.Size = UDim2.new(0.2, 0, 0, 20)
-                        btn.Position = UDim2.new(math.floor((_ - 1) % 3) * 0.25 + 0.1, 0, 0, y + math.floor((_ - 1) / 3) * 25)
+                        btn.Position = UDim2.new(math.floor((i - 1) % 3) * 0.25 + 0.1, 0, 0, y + math.floor((i - 1) / 3) * 25)
                         btn.BackgroundColor3 = c
                         btn.BorderSizePixel = 1
                         btn.BorderColor3 = THEME.Border
@@ -704,7 +688,6 @@ local function CreateUI(settings)
             tab.Button.TextColor3 = THEME.Text
         end)
 
-        -- Nếu là tab đầu tiên, active nó
         if #self.Tabs == 0 then
             activeTab = tab
             tab.TabFrame.Visible = true
@@ -756,4 +739,5 @@ function CSGOMenu:CreateWindow(name, settings)
     return CreateUI(settings)
 end
 
+-- ⚠️ QUAN TRỌNG: PHẢI CÓ DÒNG NÀY ĐỂ LOADSTRING HOẠT ĐỘNG
 return CSGOMenu
