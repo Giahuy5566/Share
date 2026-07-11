@@ -1,5 +1,5 @@
 -- ================================================================
--- CS:GO MENU UI - BẢN GIỐNG ẢNH (KHÔNG LỖI)
+-- CS:GO MENU UI - BẢN ĐẸP, ỔN ĐỊNH, FIX NÚT TẮT
 -- Tác giả: [Bạn]
 -- ================================================================
 
@@ -7,20 +7,19 @@ local CSGOMenu = {}
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
 
--- ===== CÀI ĐẶT THEME =====
+-- ===== THEME =====
 local THEME = {
     Bg = Color3.fromRGB(20, 20, 25),
-    BgDark = Color3.fromRGB(15, 15, 20),
+    BgDark = Color3.fromRGB(14, 14, 18),
     BgLight = Color3.fromRGB(38, 38, 45),
     Accent = Color3.fromRGB(255, 200, 0),
-    Text = Color3.fromRGB(240, 240, 240),
-    TextDim = Color3.fromRGB(160, 160, 170),
-    ToggleOn = Color3.fromRGB(0, 200, 80),
+    Text = Color3.fromRGB(235, 235, 240),
+    TextDim = Color3.fromRGB(155, 155, 165),
+    ToggleOn = Color3.fromRGB(0, 210, 80),
     ToggleOff = Color3.fromRGB(200, 50, 50),
     SliderFill = Color3.fromRGB(0, 150, 255),
-    Border = Color3.fromRGB(50, 50, 60),
+    Border = Color3.fromRGB(55, 55, 65),
     Font = Enum.Font.Gotham,
 }
 
@@ -39,19 +38,20 @@ function CSGOMenu:CreateWindow(title, settings)
     screenGui.Enabled = true
     self.ScreenGui = screenGui
 
-    -- Main Frame (kích thước phù hợp)
+    -- === Main Frame ===
     local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 550, 0, 420)
-    mainFrame.Position = UDim2.new(0.5, -275, 0.5, -210)
+    mainFrame.Size = UDim2.new(0, 580, 0, 440)
+    mainFrame.Position = UDim2.new(0.5, -290, 0.5, -220)
     mainFrame.BackgroundColor3 = THEME.Bg
-    mainFrame.BackgroundTransparency = 0.1
-    mainFrame.BorderSizePixel = 0
+    mainFrame.BackgroundTransparency = 0.05
+    mainFrame.BorderSizePixel = 1
+    mainFrame.BorderColor3 = THEME.Border
     mainFrame.ClipsDescendants = true
     mainFrame.Parent = screenGui
 
     -- Title Bar
     local titleBar = Instance.new("Frame")
-    titleBar.Size = UDim2.new(1, 0, 0, 28)
+    titleBar.Size = UDim2.new(1, 0, 0, 30)
     titleBar.BackgroundColor3 = THEME.BgDark
     titleBar.BorderSizePixel = 0
     titleBar.Parent = mainFrame
@@ -67,10 +67,10 @@ function CSGOMenu:CreateWindow(title, settings)
     titleLabel.TextXAlignment = Enum.TextXAlignment.Left
     titleLabel.Parent = titleBar
 
-    -- Nút đóng (X) - chỉ ẩn menu, không phá hủy
+    -- Nút đóng (chỉ ẩn mainFrame, không phá hủy)
     local closeBtn = Instance.new("TextButton")
     closeBtn.Size = UDim2.new(0, 28, 0, 28)
-    closeBtn.Position = UDim2.new(1, -30, 0, 0)
+    closeBtn.Position = UDim2.new(1, -30, 0, 1)
     closeBtn.BackgroundColor3 = THEME.BgDark
     closeBtn.BorderSizePixel = 0
     closeBtn.Text = "✕"
@@ -79,13 +79,13 @@ function CSGOMenu:CreateWindow(title, settings)
     closeBtn.Font = THEME.Font
     closeBtn.Parent = titleBar
     closeBtn.MouseButton1Click:Connect(function()
-        screenGui.Enabled = false   -- ẩn menu, vẫn giữ toggle button
+        mainFrame.Visible = false   -- ẩn menu, giữ toggle button
     end)
 
     -- Tab Bar
     local tabBar = Instance.new("Frame")
-    tabBar.Size = UDim2.new(1, 0, 0, 32)
-    tabBar.Position = UDim2.new(0, 0, 0, 28)
+    tabBar.Size = UDim2.new(1, 0, 0, 34)
+    tabBar.Position = UDim2.new(0, 0, 0, 30)
     tabBar.BackgroundColor3 = THEME.BgDark
     tabBar.BorderSizePixel = 0
     tabBar.Parent = mainFrame
@@ -103,10 +103,10 @@ function CSGOMenu:CreateWindow(title, settings)
     tabLayout.Padding = UDim.new(0, 4)
     tabLayout.Parent = tabScroll
 
-    -- Content (kích thước cố định)
+    -- Content area
     local contentFrame = Instance.new("Frame")
-    contentFrame.Size = UDim2.new(1, 0, 1, -60)
-    contentFrame.Position = UDim2.new(0, 0, 0, 60)
+    contentFrame.Size = UDim2.new(1, 0, 1, -64)
+    contentFrame.Position = UDim2.new(0, 0, 0, 64)
     contentFrame.BackgroundTransparency = 1
     contentFrame.BorderSizePixel = 0
     contentFrame.ClipsDescendants = true
@@ -132,35 +132,25 @@ function CSGOMenu:CreateWindow(title, settings)
         end
     end)
 
-    -- ===== QUẢN LÝ TAB =====
+    -- === QUẢN LÝ TAB ===
     self.Tabs = {}
     local activeTab = nil
 
-    function self:CreateTab(name, iconId)
-        iconId = iconId or "rbxassetid://4483345998"  -- icon mặc định
+    function self:CreateTab(name)
         local tab = {}
         tab.Name = name
 
-        -- Nút tab (có icon)
+        -- Nút tab
         local btn = Instance.new("TextButton")
         btn.Size = UDim2.new(0, 80, 1, 0)
         btn.BackgroundColor3 = THEME.BgDark
         btn.BorderSizePixel = 0
-        btn.Text = "  " .. name  -- chừa chỗ cho icon
+        btn.Text = name
         btn.TextColor3 = THEME.TextDim
         btn.TextScaled = true
         btn.Font = THEME.Font
         btn.Parent = tabScroll
-
-        -- Icon cho tab
-        local icon = Instance.new("ImageLabel")
-        icon.Size = UDim2.new(0, 16, 0, 16)
-        icon.Position = UDim2.new(0, 4, 0.5, -8)
-        icon.BackgroundTransparency = 1
-        icon.Image = iconId
-        icon.Parent = btn
-
-        tabScroll.CanvasSize = UDim2.new(0, #self.Tabs * 85, 0, 0)
+        tabScroll.CanvasSize = UDim2.new(0, #self.Tabs * 85 + 20, 0, 0)
 
         -- Frame chứa nội dung tab (2 cột)
         local tabFrame = Instance.new("Frame")
@@ -171,11 +161,11 @@ function CSGOMenu:CreateWindow(title, settings)
 
         -- Cột trái
         local leftCol = Instance.new("ScrollingFrame")
-        leftCol.Size = UDim2.new(0.5, -4, 1, 0)
-        leftCol.Position = UDim2.new(0, 0, 0, 0)
+        leftCol.Size = UDim2.new(0.48, 0, 1, 0)
+        leftCol.Position = UDim2.new(0, 4, 0, 0)
         leftCol.BackgroundTransparency = 1
         leftCol.BorderSizePixel = 0
-        leftCol.ScrollBarThickness = 4
+        leftCol.ScrollBarThickness = 3
         leftCol.CanvasSize = UDim2.new(0, 0, 0, 0)
         leftCol.Parent = tabFrame
 
@@ -186,7 +176,7 @@ function CSGOMenu:CreateWindow(title, settings)
 
         -- Cột phải
         local rightCol = leftCol:Clone()
-        rightCol.Position = UDim2.new(0.5, 4, 0, 0)
+        rightCol.Position = UDim2.new(0.52, 0, 0, 0)
         rightCol.Parent = tabFrame
         local rightLayout = rightCol:FindFirstChildOfClass("UIListLayout") or Instance.new("UIListLayout")
         rightLayout.Padding = UDim.new(0, 6)
@@ -198,11 +188,11 @@ function CSGOMenu:CreateWindow(title, settings)
         tab.TabFrame = tabFrame
         tab.Button = btn
 
-        -- Hàm tạo Groupbox (giống ảnh)
+        -- Hàm tạo Groupbox
         local function createGroupbox(parent, title)
             local group = {}
             local frame = Instance.new("Frame")
-            frame.Size = UDim2.new(0.95, 0, 0, 0)
+            frame.Size = UDim2.new(0.98, 0, 0, 0)
             frame.BackgroundColor3 = THEME.BgDark
             frame.BackgroundTransparency = 0.2
             frame.BorderSizePixel = 1
@@ -239,18 +229,18 @@ function CSGOMenu:CreateWindow(title, settings)
                         h = h + child.Size.Y.Offset + 4
                     end
                 end
-                frame.Size = UDim2.new(0.95, 0, 0, h + 4)
+                frame.Size = UDim2.new(0.98, 0, 0, h + 4)
             end
 
             -- Toggle
             function group:AddToggle(text, default, callback)
                 local f = Instance.new("Frame")
-                f.Size = UDim2.new(1, -8, 0, 26)
+                f.Size = UDim2.new(1, -6, 0, 26)
                 f.BackgroundTransparency = 1
                 f.Parent = content
 
                 local lbl = Instance.new("TextLabel")
-                lbl.Size = UDim2.new(0.65, 0, 1, 0)
+                lbl.Size = UDim2.new(0.6, 0, 1, 0)
                 lbl.BackgroundTransparency = 1
                 lbl.Text = text
                 lbl.TextColor3 = THEME.Text
@@ -260,8 +250,8 @@ function CSGOMenu:CreateWindow(title, settings)
                 lbl.Parent = f
 
                 local btn = Instance.new("TextButton")
-                btn.Size = UDim2.new(0.25, 0, 1, 0)
-                btn.Position = UDim2.new(0.75, 0, 0, 0)
+                btn.Size = UDim2.new(0.3, 0, 1, 0)
+                btn.Position = UDim2.new(0.7, 0, 0, 0)
                 btn.BackgroundColor3 = default and THEME.ToggleOn or THEME.ToggleOff
                 btn.BorderSizePixel = 0
                 btn.Text = default and "ON" or "OFF"
@@ -280,15 +270,15 @@ function CSGOMenu:CreateWindow(title, settings)
                 updateHeight()
             end
 
-            -- Slider (giống ảnh có thanh kéo)
+            -- Slider
             function group:AddSlider(text, min, max, default, increment, suffix, callback)
                 local f = Instance.new("Frame")
-                f.Size = UDim2.new(1, -8, 0, 36)
+                f.Size = UDim2.new(1, -6, 0, 36)
                 f.BackgroundTransparency = 1
                 f.Parent = content
 
                 local lbl = Instance.new("TextLabel")
-                lbl.Size = UDim2.new(0.6, 0, 0.5, 0)
+                lbl.Size = UDim2.new(0.55, 0, 0.5, 0)
                 lbl.BackgroundTransparency = 1
                 lbl.Text = text
                 lbl.TextColor3 = THEME.Text
@@ -298,8 +288,8 @@ function CSGOMenu:CreateWindow(title, settings)
                 lbl.Parent = f
 
                 local valLbl = Instance.new("TextLabel")
-                valLbl.Size = UDim2.new(0.35, 0, 0.5, 0)
-                valLbl.Position = UDim2.new(0.65, 0, 0, 0)
+                valLbl.Size = UDim2.new(0.4, 0, 0.5, 0)
+                valLbl.Position = UDim2.new(0.6, 0, 0, 0)
                 valLbl.BackgroundTransparency = 1
                 valLbl.Text = tostring(default) .. (suffix or "")
                 valLbl.TextColor3 = THEME.Text
@@ -351,10 +341,10 @@ function CSGOMenu:CreateWindow(title, settings)
                 updateHeight()
             end
 
-            -- Dropdown (giống ảnh)
+            -- Dropdown
             function group:AddDropdown(text, options, default, callback)
                 local f = Instance.new("Frame")
-                f.Size = UDim2.new(1, -8, 0, 26)
+                f.Size = UDim2.new(1, -6, 0, 26)
                 f.BackgroundTransparency = 1
                 f.Parent = content
 
@@ -425,7 +415,7 @@ function CSGOMenu:CreateWindow(title, settings)
             -- Colorpicker
             function group:AddColorpicker(text, default, callback)
                 local f = Instance.new("Frame")
-                f.Size = UDim2.new(1, -8, 0, 26)
+                f.Size = UDim2.new(1, -6, 0, 26)
                 f.BackgroundTransparency = 1
                 f.Parent = content
 
@@ -498,7 +488,7 @@ function CSGOMenu:CreateWindow(title, settings)
             -- Textbox
             function group:AddTextbox(text, placeholder, callback)
                 local f = Instance.new("Frame")
-                f.Size = UDim2.new(1, -8, 0, 26)
+                f.Size = UDim2.new(1, -6, 0, 26)
                 f.BackgroundTransparency = 1
                 f.Parent = content
 
@@ -528,10 +518,10 @@ function CSGOMenu:CreateWindow(title, settings)
                 updateHeight()
             end
 
-            -- Bind (keybind)
+            -- Bind
             function group:AddBind(text, defaultKey, callback)
                 local f = Instance.new("Frame")
-                f.Size = UDim2.new(1, -8, 0, 26)
+                f.Size = UDim2.new(1, -6, 0, 26)
                 f.BackgroundTransparency = 1
                 f.Parent = content
 
@@ -580,7 +570,7 @@ function CSGOMenu:CreateWindow(title, settings)
             -- Button
             function group:AddButton(text, callback)
                 local btn = Instance.new("TextButton")
-                btn.Size = UDim2.new(1, -8, 0, 26)
+                btn.Size = UDim2.new(1, -6, 0, 26)
                 btn.BackgroundColor3 = THEME.Accent
                 btn.BorderSizePixel = 0
                 btn.Text = text
@@ -595,43 +585,13 @@ function CSGOMenu:CreateWindow(title, settings)
             -- Label
             function group:AddLabel(text)
                 local lbl = Instance.new("TextLabel")
-                lbl.Size = UDim2.new(1, -8, 0, 18)
+                lbl.Size = UDim2.new(1, -6, 0, 18)
                 lbl.BackgroundTransparency = 1
                 lbl.Text = text
                 lbl.TextColor3 = THEME.TextDim
                 lbl.TextScaled = true
                 lbl.Font = THEME.Font
                 lbl.Parent = content
-                updateHeight()
-            end
-
-            -- Paragraph
-            function group:AddParagraph(title, contentText)
-                local f = Instance.new("Frame")
-                f.Size = UDim2.new(1, -8, 0, 36)
-                f.BackgroundTransparency = 1
-                f.Parent = content
-
-                local t = Instance.new("TextLabel")
-                t.Size = UDim2.new(1, 0, 0.5, 0)
-                t.BackgroundTransparency = 1
-                t.Text = title
-                t.TextColor3 = THEME.Text
-                t.TextScaled = true
-                t.Font = THEME.Font
-                t.TextXAlignment = Enum.TextXAlignment.Left
-                t.Parent = f
-
-                local c = Instance.new("TextLabel")
-                c.Size = UDim2.new(1, 0, 0.5, 0)
-                c.Position = UDim2.new(0, 0, 0.5, 0)
-                c.BackgroundTransparency = 1
-                c.Text = contentText
-                c.TextColor3 = THEME.TextDim
-                c.TextScaled = true
-                c.Font = THEME.Font
-                c.TextXAlignment = Enum.TextXAlignment.Left
-                c.Parent = f
                 updateHeight()
             end
 
@@ -670,12 +630,12 @@ function CSGOMenu:CreateWindow(title, settings)
         return tab
     end
 
-    -- ===== NÚT TOGGLE UI (mobile, luôn hiển thị) =====
+    -- === NÚT TOGGLE (luôn hiển thị, không bị ẩn) ===
     local toggleBtn = Instance.new("TextButton")
     toggleBtn.Size = UDim2.new(0, 50, 0, 50)
     toggleBtn.Position = UDim2.new(0, 10, 0.5, -25)
     toggleBtn.BackgroundColor3 = THEME.BgDark
-    toggleBtn.BackgroundTransparency = 0.2
+    toggleBtn.BackgroundTransparency = 0.3
     toggleBtn.BorderSizePixel = 1
     toggleBtn.BorderColor3 = THEME.Border
     toggleBtn.Text = "☰"
@@ -689,16 +649,18 @@ function CSGOMenu:CreateWindow(title, settings)
     corner.Parent = toggleBtn
 
     toggleBtn.MouseButton1Click:Connect(function()
-        screenGui.Enabled = not screenGui.Enabled
+        mainFrame.Visible = not mainFrame.Visible
     end)
 
-    -- Keybind mở menu
+    -- Keybind
     UserInputService.InputBegan:Connect(function(input, gp)
         if not gp and input.KeyCode == self.MenuKey then
-            screenGui.Enabled = not screenGui.Enabled
+            mainFrame.Visible = not mainFrame.Visible
         end
     end)
 
+    -- Lưu mainFrame để có thể ẩn/hiện
+    self.MainFrame = mainFrame
     return self
 end
 
