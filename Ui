@@ -1,0 +1,759 @@
+-- ================================================================
+-- CS:GO MENU UI LIBRARY - BẢN RIÊNG CHO ROBLOX
+-- Tác giả: [Bạn]
+-- Github: https://github.com/yourusername/CSGOMenu
+-- ================================================================
+
+local CSGOMenu = {}
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
+-- ===== CÀI ĐẶT THEME =====
+local THEME = {
+    Background = Color3.fromRGB(30, 30, 35),
+    BackgroundDark = Color3.fromRGB(20, 20, 25),
+    BackgroundLight = Color3.fromRGB(40, 40, 45),
+    Foreground = Color3.fromRGB(50, 50, 60),
+    Accent = Color3.fromRGB(255, 200, 0),
+    Text = Color3.fromRGB(255, 255, 255),
+    TextDim = Color3.fromRGB(180, 180, 180),
+    Border = Color3.fromRGB(70, 70, 80),
+    ToggleOn = Color3.fromRGB(0, 200, 80),
+    ToggleOff = Color3.fromRGB(200, 50, 50),
+    SliderFill = Color3.fromRGB(0, 150, 255),
+    Font = Enum.Font.Gotham,
+    TitleSize = 18,
+    NormalSize = 14,
+    SmallSize = 12,
+}
+
+-- ===== LỚP UI CHÍNH =====
+local function CreateUI(settings)
+    local self = {}
+    settings = settings or {}
+    self.Name = settings.Name or "CS:GO Menu"
+    self.MenuKey = settings.MenuKey or Enum.KeyCode.Insert
+
+    -- ScreenGui chính
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "CSGOMenu"
+    screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    screenGui.ResetOnSpawn = false
+    screenGui.Enabled = true
+    self.ScreenGui = screenGui
+
+    -- Main frame
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Name = "MainFrame"
+    mainFrame.Size = UDim2.new(0, 700, 0, 500)
+    mainFrame.Position = UDim2.new(0.5, -350, 0.5, -250)
+    mainFrame.BackgroundColor3 = THEME.Background
+    mainFrame.BackgroundTransparency = 0.1
+    mainFrame.BorderSizePixel = 0
+    mainFrame.ClipsDescendants = true
+    mainFrame.Parent = screenGui
+
+    -- Title bar
+    local titleBar = Instance.new("Frame")
+    titleBar.Name = "TitleBar"
+    titleBar.Size = UDim2.new(1, 0, 0, 30)
+    titleBar.BackgroundColor3 = THEME.BackgroundDark
+    titleBar.BorderSizePixel = 0
+    titleBar.Parent = mainFrame
+
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1, -80, 1, 0)
+    titleLabel.Position = UDim2.new(0, 10, 0, 0)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = self.Name
+    titleLabel.TextColor3 = THEME.Text
+    titleLabel.TextScaled = true
+    titleLabel.Font = THEME.Font
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.Parent = titleBar
+
+    -- Nút đóng (X)
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 30, 0, 30)
+    closeBtn.Position = UDim2.new(1, -30, 0, 0)
+    closeBtn.BackgroundColor3 = THEME.BackgroundDark
+    closeBtn.BorderSizePixel = 0
+    closeBtn.Text = "✕"
+    closeBtn.TextColor3 = THEME.Text
+    closeBtn.TextScaled = true
+    closeBtn.Font = THEME.Font
+    closeBtn.Parent = titleBar
+    closeBtn.MouseButton1Click:Connect(function()
+        screenGui.Enabled = not screenGui.Enabled
+    end)
+
+    -- Tab bar
+    local tabBar = Instance.new("Frame")
+    tabBar.Name = "TabBar"
+    tabBar.Size = UDim2.new(1, 0, 0, 35)
+    tabBar.Position = UDim2.new(0, 0, 0, 30)
+    tabBar.BackgroundColor3 = THEME.BackgroundDark
+    tabBar.BorderSizePixel = 0
+    tabBar.Parent = mainFrame
+
+    local tabScroll = Instance.new("ScrollingFrame")
+    tabScroll.Size = UDim2.new(1, 0, 1, 0)
+    tabScroll.BackgroundTransparency = 1
+    tabScroll.BorderSizePixel = 0
+    tabScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+    tabScroll.ScrollBarThickness = 0
+    tabScroll.Parent = tabBar
+
+    local tabLayout = Instance.new("UIListLayout")
+    tabLayout.FillDirection = Enum.FillDirection.Horizontal
+    tabLayout.Padding = UDim.new(0, 5)
+    tabLayout.Parent = tabScroll
+
+    -- Content area
+    local contentFrame = Instance.new("Frame")
+    contentFrame.Name = "Content"
+    contentFrame.Size = UDim2.new(1, 0, 1, -65)
+    contentFrame.Position = UDim2.new(0, 0, 0, 65)
+    contentFrame.BackgroundTransparency = 1
+    contentFrame.BorderSizePixel = 0
+    contentFrame.ClipsDescendants = true
+    contentFrame.Parent = mainFrame
+
+    -- Kéo thả
+    local dragging = false
+    local dragInput, dragStart, startPos
+
+    titleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = mainFrame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+
+    -- ===== HỆ THỐNG TAB =====
+    self.Tabs = {}
+    local activeTab = nil
+
+    function self:CreateTab(name, icon)
+        local tab = {}
+        tab.Name = name
+        tab.Icon = icon or ""
+
+        -- Nút tab
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0, 80, 1, 0)
+        btn.BackgroundColor3 = THEME.BackgroundDark
+        btn.BorderSizePixel = 0
+        btn.Text = name
+        btn.TextColor3 = THEME.TextDim
+        btn.TextScaled = true
+        btn.Font = THEME.Font
+        btn.Parent = tabScroll
+
+        -- Cập nhật canvas size
+        tabScroll.CanvasSize = UDim2.new(0, #self.Tabs * 85, 0, 0)
+
+        -- Frame nội dung tab
+        local tabFrame = Instance.new("Frame")
+        tabFrame.Size = UDim2.new(1, 0, 1, 0)
+        tabFrame.BackgroundTransparency = 1
+        tabFrame.Visible = false
+        tabFrame.Parent = contentFrame
+
+        -- Layout 2 cột
+        local mainLayout = Instance.new("UIGridLayout")
+        mainLayout.CellSize = UDim2.new(0.5, -10, 1, 0)
+        mainLayout.CellPadding = UDim2.new(0, 10, 0, 0)
+        mainLayout.FillDirection = Enum.FillDirection.Horizontal
+        mainLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        mainLayout.Parent = tabFrame
+
+        -- Cột trái
+        local leftColumn = Instance.new("ScrollingFrame")
+        leftColumn.Size = UDim2.new(1, 0, 1, 0)
+        leftColumn.BackgroundTransparency = 1
+        leftColumn.BorderSizePixel = 0
+        leftColumn.ScrollBarThickness = 5
+        leftColumn.CanvasSize = UDim2.new(0, 0, 0, 0)
+        leftColumn.Parent = tabFrame
+
+        local leftLayout = Instance.new("UIListLayout")
+        leftLayout.Padding = UDim.new(0, 10)
+        leftLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        leftLayout.Parent = leftColumn
+
+        -- Cột phải (tương tự)
+        local rightColumn = leftColumn:Clone()
+        rightColumn.Parent = tabFrame
+        local rightLayout = rightColumn:FindFirstChildOfClass("UIListLayout")
+        if not rightLayout then
+            rightLayout = Instance.new("UIListLayout")
+            rightLayout.Padding = UDim.new(0, 10)
+            rightLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+            rightLayout.Parent = rightColumn
+        end
+
+        -- Lưu trữ
+        tab.LeftColumn = leftColumn
+        tab.RightColumn = rightColumn
+        tab.LeftLayout = leftLayout
+        tab.RightLayout = rightLayout
+        tab.TabFrame = tabFrame
+        tab.Button = btn
+
+        -- Hàm tạo Groupbox
+        function tab:CreateLeftGroupbox(title)
+            return createGroupbox(self.LeftColumn, self.LeftLayout, title)
+        end
+
+        function tab:CreateRightGroupbox(title)
+            return createGroupbox(self.RightColumn, self.RightLayout, title)
+        end
+
+        -- Hàm tạo Groupbox (nội bộ)
+        local function createGroupbox(parent, layout, title)
+            local group = {}
+            local frame = Instance.new("Frame")
+            frame.Size = UDim2.new(0.95, 0, 0, 0)
+            frame.BackgroundColor3 = THEME.BackgroundDark
+            frame.BackgroundTransparency = 0.3
+            frame.BorderSizePixel = 0
+            frame.ClipsDescendants = true
+            frame.Parent = parent
+
+            local titleLabel = Instance.new("TextLabel")
+            titleLabel.Size = UDim2.new(1, 0, 0, 25)
+            titleLabel.BackgroundColor3 = THEME.BackgroundLight
+            titleLabel.BorderSizePixel = 0
+            titleLabel.Text = title
+            titleLabel.TextColor3 = THEME.Text
+            titleLabel.TextScaled = true
+            titleLabel.Font = THEME.Font
+            titleLabel.TextXAlignment = Enum.TextXAlignment.Center
+            titleLabel.Parent = frame
+
+            local content = Instance.new("Frame")
+            content.Size = UDim2.new(1, 0, 1, -25)
+            content.Position = UDim2.new(0, 0, 0, 25)
+            content.BackgroundTransparency = 1
+            content.Parent = frame
+
+            local contentLayout = Instance.new("UIListLayout")
+            contentLayout.Padding = UDim.new(0, 5)
+            contentLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+            contentLayout.Parent = content
+
+            -- Cập nhật chiều cao groupbox
+            local function updateHeight()
+                local totalHeight = 25 -- title bar
+                for _, child in ipairs(content:GetChildren()) do
+                    if child:IsA("Frame") or child:IsA("TextLabel") or child:IsA("TextButton") then
+                        totalHeight = totalHeight + child.Size.Y.Offset + 5
+                    end
+                end
+                frame.Size = UDim2.new(0.95, 0, 0, totalHeight + 10)
+            end
+
+            -- Hàm thêm thành phần
+            function group:AddToggle(text, default, callback)
+                local toggle = {}
+                local frame = Instance.new("Frame")
+                frame.Size = UDim2.new(1, -10, 0, 30)
+                frame.BackgroundTransparency = 1
+                frame.Parent = content
+
+                local label = Instance.new("TextLabel")
+                label.Size = UDim2.new(0.7, 0, 1, 0)
+                label.BackgroundTransparency = 1
+                label.Text = text
+                label.TextColor3 = THEME.Text
+                label.TextScaled = true
+                label.Font = THEME.Font
+                label.TextXAlignment = Enum.TextXAlignment.Left
+                label.Parent = frame
+
+                local btn = Instance.new("TextButton")
+                btn.Size = UDim2.new(0.2, 0, 1, 0)
+                btn.Position = UDim2.new(0.8, 0, 0, 0)
+                btn.BackgroundColor3 = default and THEME.ToggleOn or THEME.ToggleOff
+                btn.BorderSizePixel = 0
+                btn.Text = default and "ON" or "OFF"
+                btn.TextColor3 = THEME.Text
+                btn.TextScaled = true
+                btn.Font = THEME.Font
+                btn.Parent = frame
+
+                local state = default
+                btn.MouseButton1Click:Connect(function()
+                    state = not state
+                    btn.BackgroundColor3 = state and THEME.ToggleOn or THEME.ToggleOff
+                    btn.Text = state and "ON" or "OFF"
+                    if callback then callback(state) end
+                end)
+
+                updateHeight()
+                return toggle
+            end
+
+            function group:AddSlider(text, min, max, default, increment, valueName, callback)
+                local frame = Instance.new("Frame")
+                frame.Size = UDim2.new(1, -10, 0, 40)
+                frame.BackgroundTransparency = 1
+                frame.Parent = content
+
+                local label = Instance.new("TextLabel")
+                label.Size = UDim2.new(0.6, 0, 1, 0)
+                label.BackgroundTransparency = 1
+                label.Text = text
+                label.TextColor3 = THEME.Text
+                label.TextScaled = true
+                label.Font = THEME.Font
+                label.TextXAlignment = Enum.TextXAlignment.Left
+                label.Parent = frame
+
+                local valueLabel = Instance.new("TextLabel")
+                valueLabel.Size = UDim2.new(0.3, 0, 1, 0)
+                valueLabel.Position = UDim2.new(0.7, 0, 0, 0)
+                valueLabel.BackgroundTransparency = 1
+                valueLabel.Text = tostring(default) .. (valueName or "")
+                valueLabel.TextColor3 = THEME.Text
+                valueLabel.TextScaled = true
+                valueLabel.Font = THEME.Font
+                valueLabel.TextXAlignment = Enum.TextXAlignment.Right
+                valueLabel.Parent = frame
+
+                local sliderBg = Instance.new("Frame")
+                sliderBg.Size = UDim2.new(1, 0, 0, 8)
+                sliderBg.Position = UDim2.new(0, 0, 0, 30)
+                sliderBg.BackgroundColor3 = THEME.BackgroundLight
+                sliderBg.BorderSizePixel = 0
+                sliderBg.Parent = frame
+
+                local sliderFill = Instance.new("Frame")
+                sliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+                sliderFill.BackgroundColor3 = THEME.SliderFill
+                sliderFill.BorderSizePixel = 0
+                sliderFill.Parent = sliderBg
+
+                local dragging = false
+                local value = default
+
+                local function updateSlider(input)
+                    local x = math.clamp((input.Position.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X, 0, 1)
+                    value = min + (max - min) * x
+                    value = math.round(value / increment) * increment
+                    value = math.clamp(value, min, max)
+                    sliderFill.Size = UDim2.new((value - min) / (max - min), 0, 1, 0)
+                    valueLabel.Text = tostring(value) .. (valueName or "")
+                    if callback then callback(value) end
+                end
+
+                sliderBg.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                        dragging = true
+                        updateSlider(input)
+                    end
+                end)
+
+                UserInputService.InputEnded:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                        dragging = false
+                    end
+                end)
+
+                UserInputService.InputChanged:Connect(function(input)
+                    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                        updateSlider(input)
+                    end
+                end)
+
+                updateHeight()
+            end
+
+            function group:AddDropdown(text, options, default, callback)
+                local frame = Instance.new("Frame")
+                frame.Size = UDim2.new(1, -10, 0, 30)
+                frame.BackgroundTransparency = 1
+                frame.Parent = content
+
+                local label = Instance.new("TextLabel")
+                label.Size = UDim2.new(0.5, 0, 1, 0)
+                label.BackgroundTransparency = 1
+                label.Text = text
+                label.TextColor3 = THEME.Text
+                label.TextScaled = true
+                label.Font = THEME.Font
+                label.TextXAlignment = Enum.TextXAlignment.Left
+                label.Parent = frame
+
+                local btn = Instance.new("TextButton")
+                btn.Size = UDim2.new(0.4, 0, 1, 0)
+                btn.Position = UDim2.new(0.6, 0, 0, 0)
+                btn.BackgroundColor3 = THEME.BackgroundLight
+                btn.BorderSizePixel = 0
+                btn.Text = default or options[1] or ""
+                btn.TextColor3 = THEME.Text
+                btn.TextScaled = true
+                btn.Font = THEME.Font
+                btn.Parent = frame
+
+                local selected = default or options[1] or ""
+                local dropdownOpen = false
+                local dropdownFrame = nil
+
+                btn.MouseButton1Click:Connect(function()
+                    dropdownOpen = not dropdownOpen
+                    if dropdownOpen then
+                        if dropdownFrame then dropdownFrame:Destroy() end
+                        dropdownFrame = Instance.new("Frame")
+                        dropdownFrame.Size = UDim2.new(0.4, 0, 0, #options * 25 + 5)
+                        dropdownFrame.Position = UDim2.new(0.6, 0, 1, 0)
+                        dropdownFrame.BackgroundColor3 = THEME.BackgroundDark
+                        dropdownFrame.BorderSizePixel = 0
+                        dropdownFrame.ClipsDescendants = true
+                        dropdownFrame.Parent = frame
+
+                        local layout = Instance.new("UIListLayout")
+                        layout.Padding = UDim.new(0, 2)
+                        layout.Parent = dropdownFrame
+
+                        for _, opt in ipairs(options) do
+                            local optBtn = Instance.new("TextButton")
+                            optBtn.Size = UDim2.new(1, 0, 0, 25)
+                            optBtn.BackgroundColor3 = THEME.BackgroundLight
+                            optBtn.BorderSizePixel = 0
+                            optBtn.Text = opt
+                            optBtn.TextColor3 = THEME.Text
+                            optBtn.TextScaled = true
+                            optBtn.Font = THEME.Font
+                            optBtn.Parent = dropdownFrame
+                            optBtn.MouseButton1Click:Connect(function()
+                                selected = opt
+                                btn.Text = opt
+                                if callback then callback(opt) end
+                                dropdownOpen = false
+                                dropdownFrame:Destroy()
+                            end)
+                        end
+                    else
+                        if dropdownFrame then dropdownFrame:Destroy() end
+                    end
+                end)
+
+                updateHeight()
+            end
+
+            function group:AddColorpicker(text, default, callback)
+                local frame = Instance.new("Frame")
+                frame.Size = UDim2.new(1, -10, 0, 30)
+                frame.BackgroundTransparency = 1
+                frame.Parent = content
+
+                local label = Instance.new("TextLabel")
+                label.Size = UDim2.new(0.6, 0, 1, 0)
+                label.BackgroundTransparency = 1
+                label.Text = text
+                label.TextColor3 = THEME.Text
+                label.TextScaled = true
+                label.Font = THEME.Font
+                label.TextXAlignment = Enum.TextXAlignment.Left
+                label.Parent = frame
+
+                local colorBtn = Instance.new("TextButton")
+                colorBtn.Size = UDim2.new(0.2, 0, 1, 0)
+                colorBtn.Position = UDim2.new(0.8, 0, 0, 0)
+                colorBtn.BackgroundColor3 = default or Color3.fromRGB(255, 0, 0)
+                colorBtn.BorderSizePixel = 0
+                colorBtn.Text = "🎨"
+                colorBtn.TextScaled = true
+                colorBtn.Font = THEME.Font
+                colorBtn.Parent = frame
+
+                local color = default or Color3.fromRGB(255, 0, 0)
+                colorBtn.MouseButton1Click:Connect(function()
+                    -- Mở color picker đơn giản (dùng hộp thoại nhập)
+                    local colorPicker = Instance.new("Frame")
+                    colorPicker.Size = UDim2.new(0, 200, 0, 200)
+                    colorPicker.Position = UDim2.new(0.5, -100, 0.5, -100)
+                    colorPicker.BackgroundColor3 = THEME.BackgroundDark
+                    colorPicker.BorderSizePixel = 0
+                    colorPicker.Parent = self.ScreenGui
+
+                    local hueSlider = Instance.new("Frame")
+                    hueSlider.Size = UDim2.new(1, -20, 0, 20)
+                    hueSlider.Position = UDim2.new(0, 10, 0, 10)
+                    hueSlider.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+                    hueSlider.BorderSizePixel = 0
+                    hueSlider.Parent = colorPicker
+
+                    -- Đơn giản: chỉ chọn màu từ presets
+                    local presets = {
+                        Color3.fromRGB(255,0,0), Color3.fromRGB(0,255,0), Color3.fromRGB(0,0,255),
+                        Color3.fromRGB(255,255,0), Color3.fromRGB(255,0,255), Color3.fromRGB(0,255,255),
+                        Color3.fromRGB(255,255,255), Color3.fromRGB(128,128,128), Color3.fromRGB(0,0,0),
+                    }
+                    local y = 40
+                    for _, c in ipairs(presets) do
+                        local btn = Instance.new("TextButton")
+                        btn.Size = UDim2.new(0.2, 0, 0, 20)
+                        btn.Position = UDim2.new(math.floor((_ - 1) % 3) * 0.25 + 0.1, 0, 0, y + math.floor((_ - 1) / 3) * 25)
+                        btn.BackgroundColor3 = c
+                        btn.BorderSizePixel = 1
+                        btn.BorderColor3 = THEME.Border
+                        btn.Text = ""
+                        btn.Parent = colorPicker
+                        btn.MouseButton1Click:Connect(function()
+                            color = c
+                            colorBtn.BackgroundColor3 = c
+                            if callback then callback(c) end
+                            colorPicker:Destroy()
+                        end)
+                    end
+
+                    local closePicker = Instance.new("TextButton")
+                    closePicker.Size = UDim2.new(0, 30, 0, 30)
+                    closePicker.Position = UDim2.new(1, -35, 0, 5)
+                    closePicker.BackgroundColor3 = THEME.ToggleOff
+                    closePicker.BorderSizePixel = 0
+                    closePicker.Text = "X"
+                    closePicker.TextColor3 = THEME.Text
+                    closePicker.TextScaled = true
+                    closePicker.Font = THEME.Font
+                    closePicker.Parent = colorPicker
+                    closePicker.MouseButton1Click:Connect(function()
+                        colorPicker:Destroy()
+                    end)
+                end)
+
+                updateHeight()
+            end
+
+            function group:AddTextbox(text, placeholder, callback)
+                local frame = Instance.new("Frame")
+                frame.Size = UDim2.new(1, -10, 0, 30)
+                frame.BackgroundTransparency = 1
+                frame.Parent = content
+
+                local label = Instance.new("TextLabel")
+                label.Size = UDim2.new(0.4, 0, 1, 0)
+                label.BackgroundTransparency = 1
+                label.Text = text
+                label.TextColor3 = THEME.Text
+                label.TextScaled = true
+                label.Font = THEME.Font
+                label.TextXAlignment = Enum.TextXAlignment.Left
+                label.Parent = frame
+
+                local box = Instance.new("TextBox")
+                box.Size = UDim2.new(0.5, 0, 1, 0)
+                box.Position = UDim2.new(0.5, 0, 0, 0)
+                box.BackgroundColor3 = THEME.BackgroundLight
+                box.BorderSizePixel = 0
+                box.TextColor3 = THEME.Text
+                box.TextScaled = true
+                box.Font = THEME.Font
+                box.Text = placeholder or ""
+                box.Parent = frame
+                box.FocusLost:Connect(function(enter)
+                    if enter and callback then
+                        callback(box.Text)
+                    end
+                end)
+
+                updateHeight()
+            end
+
+            function group:AddBind(text, defaultKey, callback)
+                local frame = Instance.new("Frame")
+                frame.Size = UDim2.new(1, -10, 0, 30)
+                frame.BackgroundTransparency = 1
+                frame.Parent = content
+
+                local label = Instance.new("TextLabel")
+                label.Size = UDim2.new(0.5, 0, 1, 0)
+                label.BackgroundTransparency = 1
+                label.Text = text
+                label.TextColor3 = THEME.Text
+                label.TextScaled = true
+                label.Font = THEME.Font
+                label.TextXAlignment = Enum.TextXAlignment.Left
+                label.Parent = frame
+
+                local btn = Instance.new("TextButton")
+                btn.Size = UDim2.new(0.3, 0, 1, 0)
+                btn.Position = UDim2.new(0.7, 0, 0, 0)
+                btn.BackgroundColor3 = THEME.BackgroundLight
+                btn.BorderSizePixel = 0
+                btn.Text = defaultKey and tostring(defaultKey) or "None"
+                btn.TextColor3 = THEME.Text
+                btn.TextScaled = true
+                btn.Font = THEME.Font
+                btn.Parent = frame
+
+                local key = defaultKey
+                local listening = false
+                btn.MouseButton1Click:Connect(function()
+                    listening = not listening
+                    btn.Text = listening and "Press any key..." or (key and tostring(key) or "None")
+                    btn.BackgroundColor3 = listening and THEME.Accent or THEME.BackgroundLight
+                end)
+
+                UserInputService.InputBegan:Connect(function(input, gameProcessed)
+                    if listening and not gameProcessed then
+                        key = input.KeyCode
+                        if key ~= Enum.KeyCode.Unknown then
+                            listening = false
+                            btn.Text = tostring(key)
+                            btn.BackgroundColor3 = THEME.BackgroundLight
+                            if callback then callback(key) end
+                        end
+                    end
+                end)
+
+                updateHeight()
+            end
+
+            function group:AddButton(text, callback)
+                local btn = Instance.new("TextButton")
+                btn.Size = UDim2.new(1, -10, 0, 30)
+                btn.BackgroundColor3 = THEME.Accent
+                btn.BorderSizePixel = 0
+                btn.Text = text
+                btn.TextColor3 = THEME.Text
+                btn.TextScaled = true
+                btn.Font = THEME.Font
+                btn.Parent = content
+                btn.MouseButton1Click:Connect(callback or function() end)
+
+                updateHeight()
+            end
+
+            function group:AddLabel(text)
+                local label = Instance.new("TextLabel")
+                label.Size = UDim2.new(1, -10, 0, 20)
+                label.BackgroundTransparency = 1
+                label.Text = text
+                label.TextColor3 = THEME.TextDim
+                label.TextScaled = true
+                label.Font = THEME.Font
+                label.Parent = content
+
+                updateHeight()
+            end
+
+            function group:AddParagraph(title, contentText)
+                local frame = Instance.new("Frame")
+                frame.Size = UDim2.new(1, -10, 0, 40)
+                frame.BackgroundTransparency = 1
+                frame.Parent = content
+
+                local titleLabel = Instance.new("TextLabel")
+                titleLabel.Size = UDim2.new(1, 0, 0.5, 0)
+                titleLabel.BackgroundTransparency = 1
+                titleLabel.Text = title
+                titleLabel.TextColor3 = THEME.Text
+                titleLabel.TextScaled = true
+                titleLabel.Font = THEME.Font
+                titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+                titleLabel.Parent = frame
+
+                local contentLabel = Instance.new("TextLabel")
+                contentLabel.Size = UDim2.new(1, 0, 0.5, 0)
+                contentLabel.Position = UDim2.new(0, 0, 0.5, 0)
+                contentLabel.BackgroundTransparency = 1
+                contentLabel.Text = contentText
+                contentLabel.TextColor3 = THEME.TextDim
+                contentLabel.TextScaled = true
+                contentLabel.Font = THEME.Font
+                contentLabel.TextXAlignment = Enum.TextXAlignment.Left
+                contentLabel.Parent = frame
+
+                updateHeight()
+            end
+
+            updateHeight()
+            return group
+        end
+
+        -- Hiển thị tab khi click
+        btn.MouseButton1Click:Connect(function()
+            if activeTab then
+                activeTab.TabFrame.Visible = false
+                activeTab.Button.BackgroundColor3 = THEME.BackgroundDark
+                activeTab.Button.TextColor3 = THEME.TextDim
+            end
+            activeTab = tab
+            tab.TabFrame.Visible = true
+            tab.Button.BackgroundColor3 = THEME.Accent
+            tab.Button.TextColor3 = THEME.Text
+        end)
+
+        -- Nếu là tab đầu tiên, active nó
+        if #self.Tabs == 0 then
+            activeTab = tab
+            tab.TabFrame.Visible = true
+            tab.Button.BackgroundColor3 = THEME.Accent
+            tab.Button.TextColor3 = THEME.Text
+        end
+
+        table.insert(self.Tabs, tab)
+        return tab
+    end
+
+    -- ===== NÚT TOGGLE UI CHO MOBILE =====
+    local toggleBtn = Instance.new("TextButton")
+    toggleBtn.Name = "ToggleUI"
+    toggleBtn.Size = UDim2.new(0, 50, 0, 50)
+    toggleBtn.Position = UDim2.new(0, 10, 0.5, -25)
+    toggleBtn.BackgroundColor3 = THEME.BackgroundDark
+    toggleBtn.BackgroundTransparency = 0.2
+    toggleBtn.BorderSizePixel = 0
+    toggleBtn.Text = "☰"
+    toggleBtn.TextColor3 = THEME.Text
+    toggleBtn.TextScaled = true
+    toggleBtn.Font = THEME.Font
+    toggleBtn.Draggable = true
+    toggleBtn.Parent = screenGui
+
+    local toggleCorner = Instance.new("UICorner")
+    toggleCorner.CornerRadius = UDim.new(0.3, 0)
+    toggleCorner.Parent = toggleBtn
+
+    toggleBtn.MouseButton1Click:Connect(function()
+        screenGui.Enabled = not screenGui.Enabled
+    end)
+
+    -- ===== KEYBIND MỞ MENU =====
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if not gameProcessed and input.KeyCode == self.MenuKey then
+            screenGui.Enabled = not screenGui.Enabled
+        end
+    end)
+
+    return self
+end
+
+-- ===== HÀM TẠO UI CHÍNH =====
+function CSGOMenu:CreateWindow(name, settings)
+    settings = settings or {}
+    settings.Name = name
+    return CreateUI(settings)
+end
+
+return CSGOMenu
